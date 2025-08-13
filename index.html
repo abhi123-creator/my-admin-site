@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Student Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="login-screen" class="center-box">
+        <h2>Login</h2>
+        <input type="password" id="login-password" placeholder="Enter Password">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div id="main-app" style="display: none;">
+        <header>
+            <h1>Student Management</h1>
+            <button onclick="logout()">Logout</button>
+        </header>
+        
+        <div id="admin-panel" style="display:none;">
+            <h2>Admin Panel</h2>
+            <input type="password" id="new-password" placeholder="Change Main Password">
+            <button onclick="changeMainPassword()">Change Password</button>
+            <hr>
+
+            <h3>Manage Databases</h3>
+            <input type="text" id="new-db" placeholder="New Database Name">
+            <button onclick="createDatabase()">Create Database</button>
+            <select id="database-select" onchange="switchDatabase()"></select>
+            <button onclick="deleteDatabase()">Delete Current Database</button>
+            <hr>
+
+            <button onclick="exportData()">Export Current DB</button>
+            <button onclick="clearAllData()">Delete All Students in Current DB</button>
+            <hr>
+            <input type="color" id="bg-color" onchange="changeBackground()">
+            <label>Change Background</label>
+        </div>
+
+        <div>
+            <h2>Add Student</h2>
+            <input type="text" id="name" placeholder="Name">
+            <input type="text" id="admission" placeholder="Admission No">
+            <input type="text" id="mobile" placeholder="Mobile No">
+            <input type="text" id="class" placeholder="Class">
+            <input type="email" id="email" placeholder="Email">
+            <input type="file" id="photo" accept="image/*">
+            <button onclick="addStudent()">Add</button>
+        </div>
+
+        <div>
+            <h2>Search Student</h2>
+            <input type="text" id="search" placeholder="Search by Name or Mobile" oninput="searchStudent()">
+        </div>
+
+        <div id="student-list"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
