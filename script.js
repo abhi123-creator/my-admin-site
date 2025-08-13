@@ -1,209 +1,174 @@
-let mainPassword = localStorage.getItem("mainPassword") || "12345";
-let isAdmin = false;
-let databases = JSON.parse(localStorage.getItem("databases")) || { "Default": [] };
-let currentDB = localStorage.getItem("currentDB") || "Default";
+// ===================== GLOBAL DATA ===================== //
+let mainPassword = "admin123";
+let databases = {
+    default: []
+};
+let currentDatabase = "default";
 
+// Load saved data from localStorage if available
+if (localStorage.getItem("adminData")) {
+    const saved = JSON.parse(localStorage.getItem("adminData"));
+    mainPassword = saved.mainPassword;
+    databases = saved.databases;
+    currentDatabase = saved.currentDatabase;
+}
+
+// ===================== UTILITY FUNCTIONS ===================== //
+function saveData() {
+    localStorage.setItem("adminData", JSON.stringify({
+        mainPassword,
+        databases,
+        currentDatabase
+    }));
+}
+
+function generatePassword(length = 8) {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$";
+    return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
+
+function updateUserTable() {
+    const tableBody = document.getElementById("user-table-body");
+    tableBody.innerHTML = "";
+
+    databases[currentDatabase].forEach((user, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${user.username}</td>
+            <td>${user.password}</td>
+            <td>
+                <button class="action-btn" onclick="editUser(${index})">Edit</button>
+                <button class="action-btn" style="background:#e74c3c" onclick="deleteUser(${index})">Delete</button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+
+    document.getElementById("db-name").textContent = currentDatabase;
+}
+
+// ===================== LOGIN FUNCTION ===================== //
 function login() {
-    let password = document.getElementById("login-password").value;
-    if (password === mainPassword) {
-        isAdmin = true;
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("main-app").style.display = "block";
-        document.getElementById("admin-panel").style.display = "block";
-        loadDatabases();
-        displayStudents();
-    } else if (password === "user") {
-        isAdmin = false;
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("main-app").style.display = "block";
-        document.getElementById("admin-panel").style.display = "none";
-        displayStudents();
+    const inputPass = document.getElementById("admin-password").value;
+    if (inputPass === mainPassword) {
+        document.getElementById("login-box").style.display = "none";
+        document.getElementById("main-dashboard").style.display = "block";
+        updateUserTable();
     } else {
         alert("Incorrect Password!");
     }
 }
 
-function logout() {
-    document.getElementById("login-screen").style.display = "block";
-    document.getElementById("main-app").style.display = "none";
+// ===================== ADD USER ===================== //
+function addUser() {
+    const username = prompt("Enter Username:");
+    if (!username) return;
+
+    const password = generatePassword();
+    databases[currentDatabase].push({ username, password });
+    saveData();
+    updateUserTable();
 }
 
-function changeMainPassword() {
-    if (!isAdmin) return alert("Admin only!");
-    let newPass = document.getElementById("new-password").value;
-    if (newPass.trim() !== "") {
-        mainPassword = newPass;
-        localStorage.setItem("mainPassword", newPass);
-        alert("Password changed successfully!");
+// ===================== EDIT USER ===================== //
+function editUser(index) {
+    const newName = prompt("Enter new username:", databases[currentDatabase][index].username);
+    if (!newName) return;
+    const newPass = prompt("Enter new password:", databases[currentDatabase][index].password);
+    databases[currentDatabase][index] = { username: newName, password: newPass };
+    saveData();
+    updateUserTable();
+}
+
+// ===================== DELETE USER ===================== //
+function deleteUser(index) {
+    if (confirm("Are you sure you want to delete this user?")) {
+        databases[currentDatabase].splice(index, 1);
+        saveData();
+        updateUserTable();
     }
 }
 
-function loadDatabases() {
-    let select = document.getElementById("database-select");
-    select.innerHTML = "";
-    for (let db in databases) {
-        let option = document.createElement("option");
-        option.value = db;
-        option.textContent = db;
-        if (db === currentDB) option.selected = true;
-        select.appendChild(option);
-    }
+// ===================== SEARCH USER ===================== //
+function searchUser() {
+    const query = prompt("Enter username to search:");
+    if (!query) return;
+    const result = databases[currentDatabase].find(u => u.username === query);
+    alert(result ? `Found: ${result.username}, Password: ${result.password}` : "User not found!");
 }
 
-function createDatabase() {
-    let dbName = document.getElementById("new-db").value.trim();
-    if (dbName === "" || databases[dbName]) {
-        alert("Invalid or existing database name!");
-        return;
-    }
+// ===================== CHANGE MAIN PASSWORD ===================== //
+function changePassword() {
+    const oldPass = prompt("Enter current main password:");
+    if (oldPass !== mainPassword) return alert("Incorrect current password!");
+    const newPass = prompt("Enter new password:");
+    if (!newPass) return;
+    mainPassword = newPass;
+    saveData();
+    alert("Password changed successfully!");
+}
+
+// ===================== ADD/DELETE DATABASE ===================== //
+function addDatabase() {
+    const dbName = prompt("Enter new database name:");
+    if (!dbName || databases[dbName]) return alert("Invalid or duplicate name!");
     databases[dbName] = [];
-    currentDB = dbName;
-    saveDatabases();
-    loadDatabases();
-    displayStudents();
-}
-
-function switchDatabase() {
-    currentDB = document.getElementById("database-select").value;
-    localStorage.setItem("currentDB", currentDB);
-    displayStudents();
+    saveData();
+    alert(`Database "${dbName}" created.`);
 }
 
 function deleteDatabase() {
-    if (currentDB === "Default") {
-        alert("Cannot delete default database!");
-        return;
-    }
-    delete databases[currentDB];
-    currentDB = "Default";
-    saveDatabases();
-    loadDatabases();
-    displayStudents();
-}
-
-function addStudent() {
-    let name = document.getElementById("name").value;
-    let admission = document.getElementById("admission").value;
-    let mobile = document.getElementById("mobile").value;
-    let className = document.getElementById("class").value;
-    let email = document.getElementById("email").value;
-    let photoFile = document.getElementById("photo").files[0];
-
-    if (!name || !admission || !mobile) {
-        alert("Please fill all required fields!");
-        return;
-    }
-
-    let reader = new FileReader();
-    reader.onload = function() {
-        let photoData = reader.result || "";
-        let student = { name, admission, mobile, className, email, photo: photoData };
-        databases[currentDB].push(student);
-        saveDatabases();
-        displayStudents();
-        clearFields();
-    };
-    if (photoFile) {
-        reader.readAsDataURL(photoFile);
+    if (Object.keys(databases).length === 1) return alert("Cannot delete the only database!");
+    const dbName = prompt("Enter database name to delete:");
+    if (dbName === currentDatabase) return alert("Cannot delete the active database!");
+    if (databases[dbName]) {
+        delete databases[dbName];
+        saveData();
+        alert(`Database "${dbName}" deleted.`);
     } else {
-        reader.onload();
+        alert("Database not found!");
     }
 }
 
-function displayStudents() {
-    let list = document.getElementById("student-list");
-    list.innerHTML = "";
-    let students = databases[currentDB];
-    students.forEach((student, index) => {
-        let div = document.createElement("div");
-        div.className = "student-card";
-        div.innerHTML = `
-            <img src="${student.photo || 'https://via.placeholder.com/50'}" alt="Photo">
-            <div>
-                <p><strong>${student.name}</strong></p>
-                <p>Mobile: ${student.mobile}</p>
-                <p>Class: ${student.className}</p>
-            </div>
-            <div>
-                ${isAdmin ? `<button onclick="editStudent(${index})">Edit</button>
-                             <button onclick="deleteStudent(${index})">Delete</button>` : ""}
-            </div>
-        `;
-        list.appendChild(div);
-    });
-}
-
-function editStudent(index) {
-    if (!isAdmin) return;
-    let student = databases[currentDB][index];
-    document.getElementById("name").value = student.name;
-    document.getElementById("admission").value = student.admission;
-    document.getElementById("mobile").value = student.mobile;
-    document.getElementById("class").value = student.className;
-    document.getElementById("email").value = student.email;
-    deleteStudent(index);
-}
-
-function deleteStudent(index) {
-    if (!isAdmin) return;
-    databases[currentDB].splice(index, 1);
-    saveDatabases();
-    displayStudents();
-}
-
-function clearFields() {
-    document.getElementById("name").value = "";
-    document.getElementById("admission").value = "";
-    document.getElementById("mobile").value = "";
-    document.getElementById("class").value = "";
-    document.getElementById("email").value = "";
-    document.getElementById("photo").value = "";
-}
-
-function searchStudent() {
-    let query = document.getElementById("search").value.toLowerCase();
-    let students = databases[currentDB].filter(s => s.name.toLowerCase().includes(query) || s.mobile.includes(query));
-    let list = document.getElementById("student-list");
-    list.innerHTML = "";
-    students.forEach((student, index) => {
-        let div = document.createElement("div");
-        div.className = "student-card";
-        div.innerHTML = `
-            <img src="${student.photo || 'https://via.placeholder.com/50'}" alt="Photo">
-            <div>
-                <p><strong>${student.name}</strong></p>
-                <p>Mobile: ${student.mobile}</p>
-                <p>Class: ${student.className}</p>
-            </div>
-        `;
-        list.appendChild(div);
-    });
-}
-
-function clearAllData() {
-    if (!isAdmin) return alert("Admin only!");
-    if (confirm("Delete all data in current database?")) {
-        databases[currentDB] = [];
-        saveDatabases();
-        displayStudents();
+function switchDatabase() {
+    const dbName = prompt("Enter database name to switch:");
+    if (databases[dbName]) {
+        currentDatabase = dbName;
+        saveData();
+        updateUserTable();
+    } else {
+        alert("Database not found!");
     }
 }
 
+// ===================== EXPORT DATA ===================== //
 function exportData() {
-    let data = databases[currentDB];
-    let blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    let url = URL.createObjectURL(blob);
-    let a = document.createElement("a");
-    a.href = url;
-    a.download = `${currentDB}.json`;
-    a.click();
+    const data = JSON.stringify(databases, null, 2);
+    const blob = new Blob([data], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "data.json";
+    link.click();
 }
 
+// ===================== CUSTOMIZATION ===================== //
 function changeBackground() {
-    document.body.style.background = document.getElementById("bg-color").value;
+    const color = document.getElementById("bg-color-picker").value;
+    document.body.style.backgroundColor = color;
+    localStorage.setItem("bgColor", color);
 }
 
-function saveDatabases() {
-    localStorage.setItem("databases", JSON.stringify(databases));
-    localStorage.setItem("currentDB", currentDB);
+if (localStorage.getItem("bgColor")) {
+    document.body.style.backgroundColor = localStorage.getItem("bgColor");
 }
+
+// ===================== EVENT BINDINGS ===================== //
+document.getElementById("login-btn").addEventListener("click", login);
+document.getElementById("add-user-btn").addEventListener("click", addUser);
+document.getElementById("search-user-btn").addEventListener("click", searchUser);
+document.getElementById("change-pass-btn").addEventListener("click", changePassword);
+document.getElementById("add-db-btn").addEventListener("click", addDatabase);
+document.getElementById("del-db-btn").addEventListener("click", deleteDatabase);
+document.getElementById("switch-db-btn").addEventListener("click", switchDatabase);
+document.getElementById("export-btn").addEventListener("click", exportData);
+document.getElementById("apply-bg-btn").addEventListener("click", changeBackground);
